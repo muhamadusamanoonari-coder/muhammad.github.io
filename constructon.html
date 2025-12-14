@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEER Construction - ERP System</title>
+    <style>
+        :root {
+            --primary-color: #0d47a1; /* Deeper Blue */
+            --secondary-color: #1565c0;
+            --accent-color: #ffab00; /* Amber */
+            --success-color: #2e7d32;
+            --danger-color: #c62828;
+            --bg-color: #eceff1;
+            --surface-color: #ffffff;
+            --text-primary: #263238;
+            --text-secondary: #546e7a;
+        }
+
+        /* --- Global & Layout --- */
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-header h2 { margin: 0; font-size: 1.6rem; }
+
+        .sidebar nav {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+        .sidebar nav a {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            transition: all 0.2s ease-in-out;
+        }
+        .sidebar nav a:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar nav a.active {
+            background-color: var(--secondary-color);
+            border-left-color: var(--accent-color);
+            font-weight: 700;
+        }
+        .sidebar nav a svg { width: 22px; height: 22px; fill: currentColor; }
+        
+        .sidebar-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .main-header {
+            padding: 1rem 2rem;
+            background-color: var(--surface-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+        .main-header h1 { margin: 0; font-size: 1.8rem; color: var(--primary-color); }
+        .add-new-btn, .action-btn {
+            background-color: var(--accent-color);
+            color: var(--text-primary);
+            border: none;
+            padding: 0.7rem 1.4rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .add-new-btn:hover, .action-btn:hover { background-color: #ffc400; transform: translateY(-2px); }
+        
+        .content-area {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        .view { display: none; animation: fadeIn 0.4s; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Generic Components --- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--surface-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .data-table th, .data-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--bg-color); }
+        .data-table th { background-color: #f5f7fa; font-weight: 700; }
+        .data-table tbody tr:hover { background-color: #f1f3f5; }
+        .actions-cell button { background: none; border: none; cursor: pointer; padding: 0.5rem; }
+        .actions-cell svg { width: 18px; height: 18px; fill: var(--text-secondary); }
+        .actions-cell button:hover svg { fill: var(--primary-color); }
+        
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        .modal-content { background-color: var(--surface-color); padding: 2rem; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); position: relative; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .close-btn { position: absolute; top: 1rem; right: 1.5rem; font-size: 2rem; font-weight: bold; cursor: pointer; color: #aaa; }
+        .modal-form { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .modal-form .full-width { grid-column: 1 / -1; }
+        .modal-form label { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.25rem; display: block; }
+        .modal-form input, .modal-form select, .modal-form textarea { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+        .modal-form button { grid-column: 2 / -1; justify-self: end; background-color: var(--primary-color); color: white; padding: 0.8rem 2rem; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+
+        .status-tag { padding: 0.3rem 0.8rem; border-radius: 20px; font-weight: 700; font-size: 0.8rem; color: white; text-align: center; }
+        .status-active { background-color: #fb8c00; } .status-completed { background-color: var(--success-color); } .status-planning { background-color: #1e88e5; }
+        
+        .income { color: var(--success-color); font-weight: 700; }
+        .expense { color: var(--danger-color); font-weight: 700; }
+
+        /* --- CEO & Policies Section Styles --- */
+        .ceo-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            align-items: flex-start;
+        }
+        .ceo-card {
+            background-color: var(--surface-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .ceo-card img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 5px solid var(--primary-color);
+            object-fit: cover;
+            margin-bottom: 1rem;
+        }
+        .ceo-card h3 { margin: 0.5rem 0; color: var(--primary-color); font-size: 1.5rem; }
+        .ceo-card p { margin: 0.2rem 0; color: var(--text-secondary); }
+
+        .policies-card {
+            background-color: var(--surface-color);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .policies-card h3 { margin-top: 0; color: var(--primary-color); border-bottom: 2px solid var(--bg-color); padding-bottom: 0.5rem; }
+        .policies-card ul { list-style: none; padding: 0; }
+        .policies-card li { margin-bottom: 1rem; padding-left: 1.5rem; position: relative; }
+        .policies-card li::before {
+            content: '✓';
+            color: var(--success-color);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        .policies-card strong { color: var(--text-primary); }
+        
+        /* --- Report View Styles --- */
+        .report-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            background-color: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            align-items: center;
+        }
+        .report-controls label { font-weight: 700; }
+        .report-controls select { padding: 0.5rem; border-radius: 8px; border: 1px solid #ccc; }
+        .report-container {
+             background-color: var(--surface-color);
+             padding: 2rem;
+             border-radius: 12px;
+             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 1rem;
+            margin-bottom: 2rem;
+        }
+        .report-header h2 { color: var(--primary-color); margin: 0; }
+        .report-details { text-align: right; }
+        .summary-total { margin-top: 2rem; text-align: right; font-size: 1.2rem; font-weight: 700; }
+        .summary-total p { margin: 0.5rem 0; }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .sidebar, .main-header, .action-btn, .report-controls { display: none; }
+            .modal { display: none !important; }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h2>MEER ERP</h2>
+        </div>
+        <nav>
+            <a href="#" class="nav-link active" data-view="dashboard"><span>Dashboard</span></a>
+            <a href="#" class="nav-link" data-view="projects"><span>Projects</span></a>
+            <a href="#" class="nav-link" data-view="employees"><span>Employees</span></a>
+            <a href="#" class="nav-link" data-view="accounts"><span>Accounts</span></a>
+            <a href="#" class="nav-link" data-view="inventory"><span>Inventory</span></a>
+            <a href="#" class="nav-link" data-view="clients"><span>Clients & Vendors</span></a>
+            <a href="#" class="nav-link" data-view="reports"><span>Reports & Invoices</span></a>
+            <a href="#" class="nav-link" data-view="ceo"><span>CEO & Policies</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            Logged in as: <strong id="userRole">Admin</strong>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <header class="main-header">
+            <h1 id="view-title">Dashboard</h1>
+            <div id="header-actions">
+                <button class="add-new-btn" id="addNewBtn" style="display: none;">Add New</button>
+            </div>
+        </header>
+        
+        <main class="content-area">
+            <div id="dashboard-view" class="view active"></div>
+            <div id="projects-view" class="view"></div>
+            <div id="employees-view" class="view"></div>
+            <div id="accounts-view" class="view"></div>
+            <div id="inventory-view" class="view"></div>
+            <div id="clients-view" class="view"></div>
+            <div id="reports-view" class="view"></div>
+            <div id="invoice-view" class="view"></div>
+            <div id="ceo-view" class="view"></div>
+        </main>
+    </div>
+
+    <div id="universalModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">×</span>
+            <h2 id="modalTitle"></h2>
+            <form id="modalForm" class="modal-form"></form>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- MOCK DATABASE (STATE) ---
+        let state = {
+            currentView: 'dashboard',
+            editingId: null,
+            ceo: {
+                name: "Muhammad Usama",
+                title: "Chief Executive Officer",
+                email: "muhammadusamaenterprises@gmail.com",
+                phone: "0319-7921318",
+                imageUrl: "https://placehold.co/150x150/0d47a1/ffffff?text=CEO"
+            },
+            policies: [
+                { title: "Safety First", description: "All employees must wear required PPE on-site at all times. Daily safety briefings are mandatory." },
+                { title: "Quality Assurance", description: "All materials must be tested and approved. Work must be checked against drawings at every stage." },
+                { title: "Code of Conduct", description: "A zero-tolerance policy for corruption, theft, or misconduct. Professionalism is required at all times." },
+                { title: "Financial Integrity", description: "All transactions must be recorded accurately. No off-the-book payments are permitted." }
+            ],
+            projects: [
+                { id: 1, title: "Hyderi Commercial Plaza", client: "Al-Rehman Builders", location: "Saddar, Hyderabad", deadline: "2026-12-31", budget: 50000000, status: "Active" },
+                { id: 2, title: "Qasimabad Housing Scheme", client: "Govt. of Sindh", location: "Qasimabad", deadline: "2025-10-20", budget: 120000000, status: "Planning" },
+                { id: 3, title: "Fatima Jinnah Road Repair", client: "Municipal Corporation", location: "City, Hyderabad", deadline: "2025-11-30", budget: 8000000, status: "Completed" },
+            ],
+            employees: [
+                { id: 1, name: "Asif Iqbal", designation: "Project Manager", salary: 150000, phone: "0300-1112223", skill: "Management" },
+                { id: 2, name: "Bashir Ahmed", designation: "Supervisor", salary: 75000, phone: "0321-3334445", skill: "Civil Works" },
+                { id: 3, name: "Nadeem Khan", designation: "Accountant", salary: 90000, phone: "0345-5556667", skill: "Finance" },
+                { id: 4, name: "Karim Ullah", designation: "Electrician", salary: 45000, phone: "0313-7778889", skill: "Electrical" },
+            ],
+            transactions: [
+                { id: 1, date: "2025-08-20", description: "Advance from Al-Rehman", type: "Income", amount: 10000000, projectId: 1 },
+                { id: 2, date: "2025-08-21", description: "Cement Purchase", type: "Expense", amount: 2500000, projectId: 1 },
+                { id: 3, date: "2025-08-22", description: "Labor Wages - Week 1", type: "Expense", amount: 450000, projectId: 1 },
+                { id: 4, date: "2025-07-15", description: "Mobilization Advance - Qasimabad", type: "Income", amount: 25000000, projectId: 2 },
+                { id: 5, date: "2025-08-01", description: "Final Payment - Fatima Jinnah Rd", type: "Income", amount: 2000000, projectId: 3 },
+                { id: 6, date: "2025-07-25", description: "Asphalt Purchase", type: "Expense", amount: 4500000, projectId: 3 },
+            ],
+            inventory: [
+                { id: 1, name: "Cement (Bags)", stock: 800, lowStockThreshold: 100 },
+                { id: 2, name: "Steel (Tons)", stock: 45, lowStockThreshold: 10 },
+                { id: 3, name: "Paint (Liters)", stock: 250, lowStockThreshold: 50 },
+            ],
+            clients: [
+                { id: 1, name: "Al-Rehman Builders", contactPerson: "Mr. Junaid", phone: "0345-9876543", type: "Client" },
+                { id: 2, name: "Govt. of Sindh", contactPerson: "Director Planning", phone: "022-1234567", type: "Client" },
+                { id: 3, name: "Hyderabad Cement Depot", contactPerson: "Saleem Bhai", phone: "0313-1122334", type: "Vendor" },
+                { id: 4, name: "Mughal Steel Traders", contactPerson: "Imran Mughal", phone: "0301-8877665", type: "Vendor" },
+            ],
+        };
+        
+        const getProjectProfitLoss = (projectId) => {
+            const income = state.transactions.filter(t => t.projectId === projectId && t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
+            const expenses = state.transactions.filter(t => t.projectId === projectId && t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0);
+            return income - expenses;
+        };
+
+        const formSchemas = {
+             projects: [
+                { name: 'title', label: 'Project Title', type: 'text', required: true, className: 'full-width' },
+                { name: 'client', label: 'Client Name', type: 'text', required: true },
+                { name: 'location', label: 'Location', type: 'text', required: true },
+                { name: 'deadline', label: 'Deadline', type: 'date', required: true },
+                { name: 'budget', label: 'Budget (PKR)', type: 'number', required: true },
+                { name: 'status', label: 'Status', type: 'select', options: ['Planning', 'Active', 'Completed'], required: true },
+            ],
+            employees: [
+                { name: 'name', label: 'Full Name', type: 'text', required: true },
+                { name: 'designation', label: 'Designation', type: 'text', required: true },
+                { name: 'salary', label: 'Salary (PKR)', type: 'number', required: true },
+                { name: 'phone', label: 'Phone', type: 'tel', required: true },
+                { name: 'skill', label: 'Primary Skill', type: 'text', className: 'full-width' },
+            ],
+             accounts: [
+                { name: 'date', label: 'Date', type: 'date', required: true },
+                { name: 'amount', label: 'Amount (PKR)', type: 'number', required: true },
+                { name: 'type', label: 'Type', type: 'select', options: ['Income', 'Expense'], required: true },
+                { name: 'projectId', label: 'Project', type: 'select', options: state.projects.map(p => ({value: p.id, text: p.title})), required: true },
+                { name: 'description', label: 'Description', type: 'text', required: true, className: 'full-width' },
+            ],
+            inventory: [
+                { name: 'name', label: 'Item Name', type: 'text', required: true },
+                { name: 'stock', label: 'Current Stock', type: 'number', required: true },
+                { name: 'lowStockThreshold', label: 'Low Stock Threshold', type: 'number', required: true },
+            ],
+             clients: [
+                { name: 'name', label: 'Name', type: 'text', required: true },
+                { name: 'contactPerson', label: 'Contact Person', type: 'text', required: true },
+                { name: 'phone', label: 'Phone', type: 'tel', required: true },
+                { name: 'type', label: 'Type', type: 'select', options: ['Client', 'Vendor'], required: true },
+            ],
+        };
+
+        const renderView = (viewName) => {
+            const viewContainer = document.getElementById(`${viewName}-view`);
+            let html = `<div class="data-table" style="padding: 2rem;">Module for <strong>${viewName}</strong> is under construction.</div>`;
+
+            switch(viewName) {
+                case 'dashboard':
+                    const totalProjects = state.projects.length;
+                    const totalIncome = state.transactions.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
+                    const totalExpenses = state.transactions.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
+                    const profit = totalIncome - totalExpenses;
+                    html = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;">
+                            <div class="stat-card" style="background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);"><h3>Total Projects</h3><p style="font-size: 2.5rem; font-weight: 700;">${totalProjects}</p></div>
+                            <div class="stat-card" style="background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);"><h3>Total Employees</h3><p style="font-size: 2.5rem; font-weight: 700;">${state.employees.length}</p></div>
+                            <div class="stat-card" style="background: #fff; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08);"><h3>Profit / Loss</h3><p style="font-size: 2.5rem; font-weight: 700; color: ${profit >= 0 ? 'var(--success-color)' : 'var(--danger-color)'};">PKR ${profit.toLocaleString()}</p></div>
+                        </div>`;
+                    break;
+                case 'projects':
+                     html = `
+                    <table class="data-table">
+                        <thead><tr><th>Title</th><th>Client</th><th>Profit/Loss (PKR)</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody>${state.projects.map(p => {
+                            const pnl = getProjectProfitLoss(p.id);
+                            return `
+                            <tr data-id="${p.id}">
+                                <td>${p.title}</td>
+                                <td>${p.client}</td>
+                                <td class="${pnl >= 0 ? 'income' : 'expense'}">${pnl.toLocaleString()}</td>
+                                <td><span class="status-tag status-${p.status.toLowerCase()}">${p.status}</span></td>
+                                <td class="actions-cell">
+                                    <button class="edit-btn" title="Edit"><svg viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg></button>
+                                    <button class="delete-btn" title="Delete"><svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg></button>
+                                </td>
+                            </tr>`}).join('')}
+                        </tbody>
+                    </table>`;
+                    break;
+                case 'employees':
+                    html = `
+                    <table class="data-table">
+                        <thead><tr><th>Name</th><th>Designation</th><th>Salary (PKR)</th><th>Phone</th><th>Actions</th></tr></thead>
+                        <tbody>${state.employees.map(e => `
+                            <tr data-id="${e.id}">
+                                <td>${e.name}</td>
+                                <td>${e.designation}</td>
+                                <td>${e.salary.toLocaleString()}</td>
+                                <td>${e.phone}</td>
+                                <td class="actions-cell">
+                                    <button class="edit-btn" title="Edit"><svg viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg></button>
+                                    <button class="delete-btn" title="Delete"><svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg></button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>`;
+                    break;
+                case 'clients':
+                    html = `
+                    <table class="data-table">
+                        <thead><tr><th>Name</th><th>Contact Person</th><th>Phone</th><th>Type</th><th>Actions</th></tr></thead>
+                        <tbody>${state.clients.map(c => `
+                            <tr data-id="${c.id}">
+                                <td>${c.name}</td>
+                                <td>${c.contactPerson}</td>
+                                <td>${c.phone}</td>
+                                <td><span class="status-tag ${c.type === 'Client' ? 'status-planning' : 'status-active'}">${c.type}</span></td>
+                                <td class="actions-cell">
+                                    <button class="edit-btn" title="Edit"><svg viewBox="0 0 24 24"><path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z" /></svg></button>
+                                    <button class="delete-btn" title="Delete"><svg viewBox="0 0 24 24"><path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg></button>
+                                </td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>`;
+                    break;
+                case 'ceo':
+                    html = `
+                    <div class="ceo-container">
+                        <div class="ceo-card">
+                            <img src="${state.ceo.imageUrl}" alt="CEO Photo" onerror="this.onerror=null;this.src='https://placehold.co/150x150/0d47a1/ffffff?text=CEO';">
+                            <h3>${state.ceo.name}</h3>
+                            <p>${state.ceo.title}</p>
+                            <hr style="border: 1px solid var(--bg-color); margin: 1rem 0;">
+                            <p>${state.ceo.email}</p>
+                            <p>${state.ceo.phone}</p>
+                        </div>
+                        <div class="policies-card">
+                            <h3>Company Rules & Policies</h3>
+                            <ul>
+                                ${state.policies.map(p => `<li><strong>${p.title}:</strong> ${p.description}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>`;
+                    break;
+                case 'reports':
+                    html = `
+                    <div class="report-controls">
+                        <label for="reportType">Report Type:</label>
+                        <select id="reportType">
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                        <button id="generateReportBtn" class="action-btn" style="background-color: var(--primary-color); color: white;">Generate</button>
+                    </div>
+                    <div id="report-output"></div>`;
+                    break;
+            }
+            viewContainer.innerHTML = html;
+        };
+
+        const switchView = (viewName) => {
+            state.currentView = viewName;
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            
+            const targetView = document.getElementById(`${viewName}-view`);
+            targetView.classList.add('active');
+            
+            const activeLink = document.querySelector(`.nav-link[data-view="${viewName}"]`);
+            if (activeLink) activeLink.classList.add('active');
+            
+            const title = viewName.charAt(0).toUpperCase() + viewName.slice(1);
+            document.getElementById('view-title').textContent = title.replace('-', ' ');
+            
+            const headerActions = document.getElementById('header-actions');
+            headerActions.innerHTML = ''; // Clear actions
+            
+            const nonActionViews = ['dashboard', 'reports', 'invoice-view', 'ceo'];
+            if (!nonActionViews.includes(viewName)) {
+                headerActions.innerHTML = `<button class="add-new-btn" id="addNewBtn">+ Add New ${title.endsWith('s') ? title.slice(0, -1) : title}</button>`;
+            } else if (viewName === 'reports') {
+                 headerActions.innerHTML = `<button id="printReportBtn" class="action-btn" style="display:none;">Print Report</button>`;
+            }
+
+            renderView(viewName);
+        };
+
+        const generateReport = () => {
+            const reportType = document.getElementById('reportType').value;
+            const now = new Date('2025-08-22T17:41:00'); // Using a fixed date for consistent demo
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+
+            let filteredTx = [];
+            let reportTitle = '';
+
+            if (reportType === 'monthly') {
+                reportTitle = `Financial Report for ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}`;
+                filteredTx = state.transactions.filter(t => {
+                    const tDate = new Date(t.date);
+                    return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+                });
+            } else { // yearly
+                reportTitle = `Financial Report for ${currentYear}`;
+                filteredTx = state.transactions.filter(t => new Date(t.date).getFullYear() === currentYear);
+            }
+
+            const income = filteredTx.filter(t => t.type === 'Income').reduce((s, t) => s + t.amount, 0);
+            const expenses = filteredTx.filter(t => t.type === 'Expense').reduce((s, t) => s + t.amount, 0);
+            const profit = income - expenses;
+
+            const reportOutput = document.getElementById('report-output');
+            reportOutput.innerHTML = `
+            <div class="report-container" id="printable-area">
+                <div class="report-header">
+                    <div>
+                        <h2>${reportTitle}</h2>
+                        <p><strong>MEER Construction</strong><br>Hyderabad, Sindh</p>
+                    </div>
+                    <div class="report-details">
+                        <p><strong>Generated on:</strong> ${now.toLocaleDateString('en-PK')}</p>
+                    </div>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>Date</th><th>Description</th><th>Type</th><th>Amount (PKR)</th></tr></thead>
+                    <tbody>
+                        ${filteredTx.length > 0 ? filteredTx.map(t => `<tr class="${t.type.toLowerCase()}"><td>${t.date}</td><td>${t.description}</td><td>${t.type}</td><td>${t.amount.toLocaleString()}</td></tr>`).join('') : '<tr><td colspan="4" style="text-align:center;">No transactions for this period.</td></tr>'}
+                    </tbody>
+                </table>
+                <div class="summary-total">
+                    <p>Total Income: <span class="income">PKR ${income.toLocaleString()}</span></p>
+                    <p>Total Expenses: <span class="expense">PKR ${expenses.toLocaleString()}</span></p>
+                    <hr>
+                    <p><strong>Net Profit/Loss: <span class="${profit >= 0 ? 'income' : 'expense'}">PKR ${profit.toLocaleString()}</span></strong></p>
+                </div>
+            </div>`;
+            
+            document.getElementById('printReportBtn').style.display = 'inline-block';
+        };
+
+        const openModal = (id = null) => {
+            state.editingId = id;
+            const schema = formSchemas[state.currentView];
+            if (!schema) return;
+
+            const modalTitle = document.getElementById('modalTitle');
+            const modalForm = document.getElementById('modalForm');
+            const item = id ? state[state.currentView].find(i => i.id === id) : {};
+            
+            modalTitle.textContent = `${id ? 'Edit' : 'Add New'} ${state.currentView.slice(0, -1)}`;
+            let formHtml = schema.map(field => {
+                const value = item[field.name] || '';
+                if (field.type === 'select') {
+                    const optionsHtml = field.options.map(o => {
+                        const optionValue = typeof o === 'object' ? o.value : o;
+                        const optionText = typeof o === 'object' ? o.text : o;
+                        return `<option value="${optionValue}" ${optionValue == value ? 'selected' : ''}>${optionText}</option>`;
+                    }).join('');
+                    return `<div class="${field.className || ''}"><label for="${field.name}">${field.label}</label><select id="${field.name}" name="${field.name}">${optionsHtml}</select></div>`;
+                }
+                return `<div class="${field.className || ''}"><label for="${field.name}">${field.label}</label><input type="${field.type}" id="${field.name}" name="${field.name}" value="${value}" ${field.required ? 'required' : ''}></div>`;
+            }).join('');
+            formHtml += `<button type="submit" class="full-width">Save</button>`;
+            modalForm.innerHTML = formHtml;
+            document.getElementById('universalModal').style.display = 'flex';
+        };
+
+        const handleFormSubmit = (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            
+            const schema = formSchemas[state.currentView];
+            if(schema) {
+                schema.forEach(field => {
+                    if (field.type === 'number') data[field.name] = parseFloat(data[field.name]);
+                    if (field.name.endsWith('Id')) data[field.name] = parseInt(data[field.name]);
+                });
+            }
+
+            if (state.editingId) {
+                const index = state[state.currentView].findIndex(i => i.id === state.editingId);
+                state[state.currentView][index] = { ...state[state.currentView][index], ...data };
+            } else {
+                data.id = Date.now();
+                state[state.currentView].push(data);
+            }
+            renderView(state.currentView);
+            document.getElementById('universalModal').style.display = 'none';
+        };
+
+        const handleDelete = (id) => {
+            if (confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+                state[state.currentView] = state[state.currentView].filter(item => item.id !== id);
+                renderView(state.currentView);
+            }
+        };
+        
+        // --- EVENT LISTENERS ---
+        document.querySelector('.sidebar nav').addEventListener('click', e => {
+            const link = e.target.closest('.nav-link');
+            if (link) { e.preventDefault(); switchView(link.dataset.view); }
+        });
+        
+        document.getElementById('header-actions').addEventListener('click', e => {
+            if (e.target.matches('#addNewBtn')) openModal();
+            if (e.target.matches('#printReportBtn')) window.print();
+        });
+        
+        document.querySelector('.content-area').addEventListener('click', e => {
+            if (e.target.matches('#generateReportBtn')) {
+                generateReport();
+                return;
+            }
+
+            const row = e.target.closest('tr[data-id]');
+            if (!row) return;
+            const id = parseInt(row.dataset.id);
+
+            if (e.target.closest('.edit-btn')) openModal(id);
+            if (e.target.closest('.delete-btn')) handleDelete(id);
+        });
+
+        document.querySelector('.close-btn').addEventListener('click', () => document.getElementById('universalModal').style.display = 'none');
+        document.getElementById('modalForm').addEventListener('submit', handleFormSubmit);
+
+        // --- INITIALIZATION ---
+        switchView('dashboard');
+    });
+    </script>
+</body>
+</html>
